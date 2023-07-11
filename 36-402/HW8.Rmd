@@ -1,0 +1,229 @@
+---
+title: "36-402 Homework 8"
+author: "James \"Morgan\" Hawkins"
+date: "Friday April 7, 2023"
+output:
+  pdf_document: default
+  word_document: default
+  font_size: 12
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tictoc)
+library(np)
+library(mgcv)
+
+```
+
+
+## Problem 1
+
+
+```{r}
+data(oecdpanel)
+gdp = oecdpanel
+```
+
+
+### Problem 1 (a)
+
+
+```{r}
+hist(gdp$growth, main = "Distribution of GDP Growth Rate",
+     xlab = "5 Year GDP Growth Rate")
+
+#sd(gdp$growth)
+
+```
+
+
+In the plot above we see that our response variable growth appears to have a unimodal, symmetrical distribution. Growth has a sample mean of .020 and sample standard deviation of .030 with a few outliers at around 15% and -10%.
+
+
+```{r, fig.height = 6, fig.width = 10}
+par(mfrow = c(2,2))
+
+var.des = c("Initial GDP", 
+           "Population Growth Rate",
+           "Investment/GDP Ratio",
+           "Secondary School Enrollment Rate")
+
+
+
+for(col in 4:7){
+  #cat(colnames(gdp)[col],mean(as.numeric(gdp[,col])), sd(as.numeric(gdp[,col])),"\n\n")
+  hist(as.numeric(gdp[,col]), main = paste("Distribution of",var.des[col-3]), xlab = var.des[col-3])
+  
+}
+
+
+```
+
+
+In the plot above we see that the distribution of Initial GDP has a somewhat unimodal distribution that is slightly left-skewed. Initial GDP has a mean of 7.82 and a standard deviation of 1.01 with no obvious outliers. Population growth rate  has a unimodal left-skewed distribution. Population growth rate has a mean of -2.68 and a standard deviation of .152 with an outlier at -3.4. Investment/GDP ratio  has a unimodal left-skewed distribution. Investment/GDP ratio has a mean of -1.93 and a standard deviation of .656 with no clear outliers. Secondary school enrollment rate has a unimodal left-skewed distribution. Secondary school enrollment rate has a mean of 1.26 and a standard deviation of .825 with no clear outliers.
+
+
+```{r}
+table(gdp$oecd)/(dim(gdp)[1])
+
+table(gdp$year)/(dim(gdp)[1])
+
+is.na(gdp) %>% sum
+```
+
+
+In our data around 26.1% of our cases are countries that were a member of OECD in the time frame of the case. We also see that year is uniformly distributed and all countries in the data set have data for each year. There are no missing data points. 
+
+
+```{r, fig.height = 10, fig.width = 10}
+c("GDP Growth", "Initial GDP", "Population Growth Rate", "Invesment/GDP Ratio", "Secondary School \nEnrollment Rate") %>%
+  pairs(gdp[,-c(2,3)], pch = '.', labels = .)
+
+
+```
+
+
+In the plot of continuous variables pairs above we notice the following possible relationships. A negative linear relationship between initial GDP and population growth rate, positive relationship between investment/GDP ratio and GDP growth, positive non-linear relationship between initial GDP and investment GDP ratio, negative non-linear relationship between population growth rate and secondary school enrollment rate, positive relationship between secondary school enrollment rate and investment/GDP ratio, and a positive non-linear relationship between initial GDP and secondary school enrollment rate. 
+
+
+```{r, fig.width = 12, fig.height = 5}
+
+par(mfrow = c(1,2))
+
+boxplot(growth ~ year, data = gdp, ylab = "GDP Growth", xlab = "Year")
+abline(0,0, col = 'grey')
+boxplot(growth ~ oecd, data = gdp, ylab = "GDP Growth", xlab = "Memeber of OECD", xaxt = 'n')
+axis(1, at = c(1,2), labels = c("False", "True"))
+
+
+```
+
+
+Above we see that all 7 time periods have average GDP growth rates above 0 with 1970-1974 having the highest average growth rate among countries while 1980-1984 had the lowest average growth rate among countries. We also see that countries that are in the OECD have higher average growth rates as well as less variance in their 5 year growth rates. We also notice that countries in the OECD have more outliers on the right side of the distribution of GDP growth while countries not in the OECD have more outliers on the left-tail of the distribution of GDP growth. 
+
+
+### Problem 1 (b)
+
+
+```{r}
+model.1 = lm(growth ~ year + inv, data = gdp)
+model.1 %>% summary
+```
+
+
+```{r, fig.width = 10, fig.height = 4}
+par(mfrow = c(1,2))
+plot(model.1,1:2, pch = 19, cex = .25)
+
+```
+
+
+On the residual vs. fitted plot we see that the residuals appear to have constant variance and mean 0. On the normal QQ plot we see that our residuals are also approximately normal. However, the empirical distribution appears to have slightly wider tails than the assumed normal distribution, especially on the left tail. So, our assumption of normally distributed residuals may be violated. 
+
+
+```{r, fig.width = 10, fig.height = 4}
+par(mfrow = c(1,2))
+boxplot(residuals(model.1) ~ gdp$year, 
+        xlab = "End Year", ylab = "Residual", main = "Residuals vs Time Period")
+abline(0, 0, col = 'grey')
+plot(gdp$inv,residuals(model.1), pch = 19, cex = .25,
+     xlab = "Investment/GDP ratio", ylab = "Residual", main = "Residual vs. Investment / GDP Ratio")
+abline(0, 0, col = 'grey')
+
+
+```
+
+
+Above we see the residuals appear to have approximately mean 0 for all time periods except for 1980-1984 where the residuals appear to have mean below 0. This is shown by 0 being in almost the 75th percentile for residuals with a time period of 1980-1985. So, our assumption of iid residuals with mean 0 may be violated. On the residual vs investment/GDP ratio plot, the residuals appear to have constant variance and mean 0 for all values of investment/GDP ratio so no assumption violations are shown on this plot.  
+
+
+### Problem 1 (c)
+
+
+```{r}
+
+model.2 = gam(growth ~ s(year, k = 4, fx = TRUE) + s(inv), data = gdp)
+model.2 %>% summary
+
+anova(model.2, model.1)
+
+```
+
+
+```{r}
+
+plot(fitted(model.2), residuals(model.2), pch = 19, cex = .25,
+     ylab = "residual", xlab = "fitted",
+     main = "Model 2 Residual vs. Fitted")
+abline(0,0, col = 'grey')
+
+```
+
+
+The plot above suggests that the fitted values ar not predictive of the residual. The residuals appear to have constant variance and constant mean of 0. This is also the case for model 1. In the model summary we see that model 2 has a lower training error than model 1. We find this difference to be significant via an F test.
+
+
+### Problem 1 (d)
+
+
+```{r}
+model.3 = npreg(growth ~ year + inv, data = gdp)
+summary(model.3)
+
+```
+
+
+```{r}
+plot(fitted(model.3), residuals(model.3), pch = 19, cex = .25,
+     ylab = "residual", xlab = "fitted",
+     main = "Model 3 Residual vs. Fitted")
+abline(0,0, col = 'grey')
+
+```
+
+
+The residuals in model 3 appear to have constant variance and constant mean 0. This is similar to models 1 and 2. Model 3 predictions also appear to have less variance than model 1 and 2 as shown by the tighter x range in the plot above.
+
+
+
+
+
+### Problem 1 (e)
+
+
+
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

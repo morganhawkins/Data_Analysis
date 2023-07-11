@@ -1,0 +1,389 @@
+---
+title: "36-402 Homework 5"
+author: "James \"Morgan\" Hawkins"
+date: "Friday Feb 24, 2023"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(np)
+library(caret)
+```
+
+
+## Problem 1
+
+
+### Problem 1 (a)
+
+
+```{r}
+house = read.csv("/Users/morganhawkins/Downloads/house.csv")
+#head(house)
+#dim(house)
+```
+
+
+```{r 1a}
+plot(house$Longitude, house$Latitude, main = "Census Tract Location", xlab = "Longitude", ylab = "Latitude", cex = 1, pch = '.')
+
+
+```
+
+
+The census tracts appear to cluster in two places. (32,-130) to (42,-115) and (40,-85) to (43,-70). This makes sense because our data is drawn from CA and PA.
+
+
+## Problem 1 (b)
+
+
+```{r 1b}
+
+mod.1 <- lm(Median_house_value ~ Median_household_income + Mean_household_income + Population, data = house)
+mod.2 <- lm(Median_house_value ~ Median_household_income + Mean_household_income + Population + Longitude + Latitude, data = house)
+
+cat("model 1",summary(mod.1)$adj.r.squared, "\nmodel 2", summary(mod.2)$adj.r.squared)
+
+summary(mod.2)
+```
+
+
+```{r 1b2,fig.width = 10, fig.height = 4}
+par(mfrow = c(1,2))
+plot(house$Latitude, house$Median_house_value, pch = ".", main = "House Value vs. Latitude", xlab = "Latitude", ylab = "Median House Value")
+plot(house$Longitude, house$Median_house_value, pch = ".", main = "House Value vs. Longitude", xlab = "Longitude", ylab = "Median House Value")
+
+```
+
+
+The second model fits to the data better because both latitude and longitude have significant relationships with median home values (p-values < 2e-16 for both). Also population does not have a significant relationship with the response in model 1 because of the exclusion of location data.
+
+
+## Problem 1 (c)
+
+
+```{r 1c}
+mod.3 <- lm(Median_house_value ~ 
+              Median_household_income + Mean_household_income + Population + 
+              Longitude + Latitude + (Longitude>-100) + Longitude*(Longitude>-100) + 
+              Latitude*(Longitude>-100), data = house)
+
+summary(mod.3)
+```
+
+
+For model 3 I included an indicator variable showing whether the tracts longitudinal value was greater than -100. I also included this variable's interactions with longitude and latitude. Fitting this model give us an adjusted R^2 of .7634. This is a large increase in the predictive power over models 1 and 2. This model seems to be able to fit to our data better, but I do not believe it will be able to generalize well over the United States. Our indicator variable is able to provide the additional predictive power because our date set only includes data from CA ad PA. So, I suspect model 2 will generalize better. 
+
+
+### Problem 1 (d)
+
+
+```{r 1d}
+house.sample.size = dim(house)[1]
+
+loocv.residuals.mod.1 = c()
+for(i in 1:house.sample.size){
+  temp.mod = lm(Median_house_value ~ Median_household_income + Mean_household_income + Population, data = house[-i,])
+  temp.residual = predict(temp.mod,house[i,]) - house$Median_house_value[i] 
+  loocv.residuals.mod.1 = c(loocv.residuals.mod.1,temp.residual)
+  
+}
+
+
+loocv.residuals.mod.2 = c()
+for(i in 1:house.sample.size){
+  temp.mod = lm(Median_house_value ~ Median_household_income + Mean_household_income + Population + Longitude + Latitude, data = house[-i,])
+  temp.residual = predict(temp.mod,house[i,]) - house$Median_house_value[i] 
+  loocv.residuals.mod.2 = c(loocv.residuals.mod.2,temp.residual)
+  
+}
+
+loocv.residuals.mod.3 = c()
+for(i in 1:house.sample.size){
+  temp.mod = lm(Median_house_value ~ Median_household_income + Mean_household_income + 
+                  Population + Longitude + Latitude + (Longitude>-100) +
+                  Longitude*(Longitude>-100) + Latitude*(Longitude>-100), data = house[-i,])
+  temp.residual = predict(temp.mod,house[i,]) - house$Median_house_value[i] 
+  loocv.residuals.mod.3 = c(loocv.residuals.mod.3,temp.residual)
+  
+}
+
+loocv.df = data.frame(model.1 = loocv.residuals.mod.1, model.2 = loocv.residuals.mod.2,model.3 = loocv.residuals.mod.3)
+
+#sapply(loocv.df, function(v){return(1 - mean(v^2)/(sd(house$Median_house_value)^2))})
+
+sapply(loocv.df,sd)
+```
+
+
+The test errors for models 1,2,and 3 were 151.2, 118.4, and 102.3. This is a slight increase from the train error from all 3 models. the train errors for model 1,2, and 3 were 151.2, 118.3, and 102.2. This is a relatively small increase from from train error to test error. Model 3 still outperforms models 1 and 2 by a large margin, so model 3 appears to still be the best model. I am curious which model would perform the best when tested with data collected from across the country. I suspect that model 3 will not perform as well because the indicator variable included is an arbitrary longitude picked to classify whether a observation is from CA or PA. We have no reason to believe that the longitude -100 is significant in any other way than separating CA and PA so it may introduce some bias when testing with other states.
+
+
+### Problem 1 (e)
+
+
+```{r 1e}
+mod.4.bws = apply(house[ ,c(1,2,3,5,6)], 2, sd)/nrow(house)^(0.2)
+
+mod.4 <- npreg(Median_house_value ~ Median_household_income + Mean_household_income + Population + Longitude + Latitude, data = house, bws = mod.4.bws, residuals = T)
+
+cat("Model 4 Train Error:", mean(residuals(mod.4)^2))
+
+```
+
+Model 4 train error is 4.077e-19. 
+
+### I spent a lot of time trying to fix this and went to office hours on Thursday. The TA hosting office hours and I both were not able to fix the error. We checked all the variables referenced, and tried uninstalling and reinstalling "np". Bandwiths vector is correct and the columns of my data are not mislabeled to include the response variable as a predictor. Not sure what's wrong but I would appeciate if this was considered when grading this problem. 
+
+
+```{r 1e2, fig.width = 17, fig.height = 7}
+#Model 3 residual plots
+
+par(mfrow = c(2,3))
+
+plot(mod.3$fitted.values, mod.3$residuals, ylab = "Residual", main = "Residual vs. Fitted value", xlab = "Fitted Value")
+abline(lm(mod.3$residuals ~ mod.3$fitted.values), col = "red")
+
+plot(house$Median_household_income, mod.3$residuals, ylab = "Residual", main = "Residual vs. Median Household Income", xlab = "Median Household Income")
+abline(lm(mod.3$residuals ~ house$Median_household_income), col = "red")
+
+plot(house$Mean_household_income, mod.3$residuals, ylab = "Residual", main = "Residual vs. Mean Household Income", xlab = "Mean Household Income")
+abline(lm(mod.3$residuals ~ house$Mean_household_income), col = "red")
+
+plot(house$Population, mod.3$residuals, ylab = "Residual", main = "Residual vs. Population", xlab = "Population")
+abline(lm(mod.3$residuals ~ house$Population), col = "red")
+
+plot(house$Longitude, mod.3$residuals, ylab = "Residual", main = "Residual vs. Longitude", xlab = "Longitude")
+abline(lm(mod.3$residuals ~ house$Longitude), col = "red")
+
+plot(house$Latitude, mod.3$residuals, ylab = "Residual", main = "Residual vs. Latitude", xlab = "Latitude")
+abline(lm(mod.3$residuals ~ house$Latitude), col = "red")
+```
+
+
+The residual vs fitted plot shows that the residuals are likely not iid because they do not have constant mean of 0. Tacts with fitted values lower than 500 appear to have residuals with mean > 0 and tacts with fitted values greater than 500 appear to have residuals with mean < 0. There also appears to be heteroskedasticty because residuals with fitted values closer to 500 appear to have higher variance. There appears to be heteroskedasticity on the plots of Residuals vs. Median Household Income, Mean Household Income, Population, and Longitude. The Residual vs Latitude plot also appears to show heteroskedasticty and tacts with Latitude between 35 and 37 appear to have residuals with mean < 0.
+
+
+```{r 1e3, fig.height=10, fig.width=17}
+#Model 4 residual plots
+
+par(mfrow = c(2,3))
+
+plot(fitted(mod.4), mod.4$resid)
+abline(lm(mod.4$resid ~ fitted(mod.4)), col = "red")
+
+plot(house$Median_household_income, mod.4$resid)
+abline(lm(mod.4$resid ~ house$Median_household_income), col = "red")
+
+plot(house$Mean_household_income, mod.4$resid)
+abline(lm(mod.4$resid ~ house$Mean_household_income), col = "red")
+
+plot(house$Population, mod.4$resid)
+abline(lm(mod.4$resid ~ house$Population), col = "red")
+
+plot(house$Longitude, mod.4$resid)
+abline(lm(mod.4$resid ~ house$Longitude), col = "red")
+
+plot(house$Latitude, mod.4$resid)
+abline(lm(mod.4$resid ~ house$Latitude), col = "red")
+```
+
+
+The residuals appear to be very small. This is a sign that model 4 is overfitting to the data. There appears to be 6 residuals which are considerably further from from the mean than the others. This shows that our residuals do not have constant variance. Additionally, the large residuals appear to have similar values for longitude, population, mean household income, and median household income. However, their values for latitide are not similar.
+
+
+### Problem 1 (f)
+
+
+For performing cross validation I will pick k = 5. I am picking a small value of k rather than a larger value such as 10 because although it has a larger bias towards overestimating train error, there is less variance associated with this estimate. This means we will be conservative in our estimate of our models' predictive power with externally sampled data. Also our dataset is quite large with over 10,000 samples so our train samples in each fold will still be very large with over 8,000 samples.
+
+
+```{r}
+mean.sq.diffeence = function(v.1,v.2){
+  return(mean((v.1-v.2)^2))
+  
+}
+
+```
+
+
+```{r 1f, fig.width = 15, fig.height = 7, eval = TRUE}
+#5-Fold CV
+set.seed(999)
+folds = sample(1:dim(house)[1])
+
+mod.1.fold.errors = c()
+mod.2.fold.errors = c()
+mod.3.fold.errors = c()
+mod.4.fold.errors = c()
+
+for(f in 1:5){
+  #defining train and test sets for fold
+  fold.test = house[((f-1)*2121+1):(f*2121),]
+  fold.train = house[-(((f-1)*2121+1):(f*2121)),]
+  
+  #fitting models
+  
+  #fitting model 1
+  k.fold.mod.1 = lm(Median_house_value ~ Median_household_income + 
+                      Mean_household_income + Population, data = fold.train)
+  #fitting model 2
+  k.fold.mod.2 = lm(Median_house_value ~ Median_household_income + 
+                      Mean_household_income + Population + Longitude + Latitude, 
+                    data = fold.train)
+  #fitting model 3
+  k.fold.mod.3 = lm(Median_house_value ~ Median_household_income + 
+                      Mean_household_income + Population + Longitude + Latitude + 
+                      (Longitude>-100) + Longitude*(Longitude>-100) + 
+                      Latitude*(Longitude>-100), data = fold.train)
+  #fitting model 4
+  k.fold.mod.4.bws = sapply(fold.train[ ,c(1,2,3,5,6)], sd)/(dim(fold.train)[1]^(0.2))
+  k.fold.mod.4 <- npreg(Median_house_value ~ Median_household_income + 
+                          Mean_household_income + Population + Longitude + 
+                          Latitude, data = fold.train, bws = k.fold.mod.4.bws, 
+                        residuals = TRUE)
+  
+  #creating prediction errors
+  
+  #model 1
+  k.fold.mod.1.pred.err = mean.sq.diffeence(predict(k.fold.mod.1,fold.test),
+                                            fold.test$Median_house_value)
+  mod.1.fold.errors = c(mod.1.fold.errors,k.fold.mod.1.pred.err)
+  #model 2
+  k.fold.mod.2.pred.err = mean.sq.diffeence(predict(k.fold.mod.2,fold.test),
+                                            fold.test$Median_house_value)
+  mod.2.fold.errors = c(mod.2.fold.errors,k.fold.mod.2.pred.err)
+  #model 3
+  k.fold.mod.3.pred.err = mean.sq.diffeence(predict(k.fold.mod.3,fold.test),
+                                            fold.test$Median_house_value)
+  mod.3.fold.errors = c(mod.3.fold.errors,k.fold.mod.3.pred.err)
+  #model 4
+  k.fold.mod.4.pred.err = mean((fold.test$Median_house_value - predict(k.fold.mod.4, newdata = fold.test[,c(1,2,3,5,6)]))^2)
+  mod.4.fold.errors = c(mod.4.fold.errors,k.fold.mod.4.pred.err)
+  
+}
+
+k.fold.df = data.frame(fold = 1:5,
+                       model.1 = mod.1.fold.errors, model.2 = mod.2.fold.errors,
+                       model.3 = mod.3.fold.errors,model.4 = mod.4.fold.errors)
+
+```
+
+
+The squared prediction error for each fold and model are shown in the table below.
+
+
+```{r, echo = FALSE}
+k.fold.df
+```
+
+
+### Problem 1 (g)
+
+
+```{r 1g}
+#5-fold CV Error Estimate
+sapply(k.fold.df,mean) %>% sapply(.,sqrt)
+
+#Error SE Estimate
+sapply(k.fold.df, sd)/(5^.5)
+
+```
+
+
+The square rooted train errors for model 1,2,and 3 were 151.2, 118.3, and 102.2. These are similar but slightly lower than the square rooted test errors computed through 5-fold CV. The test errors estimated using 5-fold CV for models 1, 2, and 3 were 155.578, 119.596, and 103.2097. Model 4 had a large increase in error estimate when moving from train error to test error. The square rooted train error for model 4 was 4.076852e-19, but the square rooted test error estimate was 399.215. This is a large change between train and test error, so it appears model 4 may be overfitting to our data. 
+
+
+## Problem 3
+
+
+```{r}
+pb.dat <- read.csv("/Users/morganhawkins/Downloads/parametric-bootstrap.csv")
+head(pb.dat)
+```
+
+
+### Problem 3 (a)
+
+
+```{r 3a, fig.width = 15, fig.height = 3}
+mod.pb <- lm(y ~ x, data = pb.dat)
+#summary(mod.pb)
+
+par(mfrow =c(1,4))
+plot(pb.dat$x,residuals(mod.pb), xlab = "X", ylab = "Residual", main = "Residual vs X")
+plot(mod.pb,2:3)
+
+```
+
+
+The Scale-Location plot reveals non constant variance in the residuals.2
+
+
+### Problem 3 (b)
+
+
+```{r 3b}
+predict(mod.pb, data.frame(x = c(-18)), se.fit = T)[1:2]
+
+```
+
+
+The estimated E[Y |X = -18] = -33.245. The standard error of this estimate is 2.464. For this se estimate to be accurate the residuals must be normally distributed, and identically distributed with mean 0 and constant variance. Our constant variance and iid assumptions are not met. 
+
+
+### Problem 3 (c)
+
+
+```{r 3c}
+f.bootstrap = function(x){
+  b.0 = mod.pb$coefficients[1]
+  b.1 = mod.pb$coefficients[2]
+  
+  e.var = 25*(abs(x) + .5)
+  e = rnorm(length(x), mean = 0, sd = sqrt(e.var))
+  
+  y.bootstrapped = b.0 + (b.1*x) + e
+  return(data.frame(x = x, y = y.bootstrapped))
+}
+
+```
+
+
+### Problem 3 (d)
+
+
+```{r 3d}
+iterations = 1000
+preds = c()
+set.seed(100)
+
+for(i in 1:iterations){
+  new.dat = f.bootstrap(pb.dat$x)
+  new.mod = lm(y ~ x, data = new.dat)
+  
+  new.pred = predict(new.mod, data.frame(x = c(-18)))
+  preds = c(preds, new.pred)
+}
+
+sd(preds)
+
+```
+
+
+The estimated SE we obtained from bootstrapping is 3.41 which is higher than our previous estimate of 2.46
+
+
+
+
+
+
+
+
+
+

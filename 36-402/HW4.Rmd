@@ -1,0 +1,533 @@
+---
+title: "36-402 Homework 4"
+author: "James \"Morgan\" Hawkins"
+date: "Friday Feb 17, 2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+```{r}
+ucb = data.frame(UCBAdmissions)
+library(dplyr)
+```
+
+## Problem 1
+
+### Problem 1 (a)
+
+```{r}
+depA = UCBAdmissions[,,"A"]
+pA = sum(depA) / sum(UCBAdmissions)
+depB = UCBAdmissions[,,"B"]
+pB = sum(depB) / sum(UCBAdmissions)
+depC = UCBAdmissions[,,"C"]
+pC = sum(depC) / sum(UCBAdmissions)
+depD = UCBAdmissions[,,"D"]
+pD = sum(depD) / sum(UCBAdmissions)
+depE = UCBAdmissions[,,"E"]
+pE = sum(depE) / sum(UCBAdmissions)
+depF = UCBAdmissions[,,"F"]
+pF = sum(depF) / sum(UCBAdmissions)
+
+p_maleA = depA[1]/(depA[1] + depA[2])
+p_femaleA = depA[3]/(depA[3] + depA[4])
+p_maleB = depB[1]/(depB[1] + depB[2])
+p_femaleB = depB[3]/(depB[3] + depB[4])
+p_maleC = depC[1]/(depC[1] + depC[2])
+p_femaleC = depC[3]/(depC[3] + depC[4])
+p_maleD = depD[1]/(depD[1] + depD[2])
+p_femaleD = depD[3]/(depD[3] + depD[4])
+p_maleE = depE[1]/(depE[1] + depE[2])
+p_femaleE = depE[3]/(depE[3] + depE[4])
+p_maleF = depF[1]/(depF[1] + depF[2])
+p_femaleF = depF[3]/(depF[3] + depF[4])
+
+
+
+
+
+
+
+ate_male = (pA * p_maleA) + (pB * p_maleB) + (pC * p_maleC) + (pD * p_maleD) + (pE * p_maleE) + (pF * p_maleF)
+ate_female = (pA * p_femaleA) + (pB * p_femaleB) + (pC * p_femaleC) + (pD * p_femaleD) + (pE * p_femaleE) + (pF * p_femaleF)
+ate_male
+ate_female
+```
+
+
+The adjusted treatment effect is .387 and .430 for males and females respectively.Adjusting for department did make a difference because the treatment effects were .445 and .3035 for males and females previously so the group with a higher admission rate switched from males to females. 
+
+
+### Problem 1 (b)
+
+```{r}
+
+
+male.acceptances = c(p_maleA, p_maleB, p_maleC, p_maleD, 
+                     p_maleE, p_maleF, ate_male
+                     )
+female.acceptances = c(p_femaleA, p_femaleB, p_femaleC, p_femaleD, 
+                      p_femaleE, p_femaleF, ate_female)
+
+plot(0,0,cex = 0, xlim = c(0,1), ylim = c(0,1), xlab = "Gender (male = 0)",ylab = "proportion of students admitted")
+
+for(i in 1:6){
+  segments(0,male.acceptances[i], 1, female.acceptances[i],col = i)
+  
+}
+legend(x = .1, y = 1.03, legend=c("Depart A", "Depart B", "Depart C", "Depart D", "Depart E", "Depart F", "Averge Total Effect"), col = 1:6, lwd = 1)
+```
+
+
+### Problem 1 (c)
+
+
+```{r}
+plot(1, type="n", main = "Proportion of students admitted by Gender and Department", 
+     xlim = c(1,6), ylim = c(0,1), ylab = "Proportion admitted", 
+     xlab = "Department \n A = 1, B = 2, C = 3, D= 4, E = 5, F= 6")
+segments(1:5, male.acceptances[1:5], 2:6, male.acceptances[2:6], col = "red")
+segments(1:5, female.acceptances[1:5], 2:6, female.acceptances[2:6], col = "blue")
+segments(1:5, c(pA, pB, pC, pD, pE), 2:6, c(pB, pC, pD, pE, pF), col = "green")
+
+```
+
+
+The estimate of for the adjusted treatment effect is different from the regression estimate from regressing Y on X because the effect that gender has on the proportion of students admitted is not constant. Different departments have different effects that gender has on acceptance. 
+
+
+## Problem 2
+
+
+### Problem 2 (a)
+
+
+```{r}
+sat <- read.table("/Users/morganhawkins/Downloads/CASE1201.ASC", header = TRUE)
+head(sat,10)
+#sat
+
+
+```
+
+```{r}
+sat[order(sat$sat, decreasing = T),c(1,2)] %>% head
+
+mod = lm(sat ~ takers + rank, data=sat)
+residual.df = data.frame(state = sat$state, residual = residuals(mod))
+residual.df[order(residual.df$residual,decreasing = T),] %>% head
+
+
+
+```
+
+```{r}
+mod %>% summary
+```
+From this output I see that controlling for takers and rank shifts the ranking significantly. In the top 10 best ranked states when we control for takers and rank, there are 3 states that were previously in the bottom 15 states. Iowa remained with a high ranking, moving from 1 to 2. Many of the top states are now stakes on the east coast whereas previously there were states closer to the center of the country. The state that rose the most was Massachusetts This is likely because Massachusetts had a relatively low rank but higher number of takers, so its performance was under predicted because our model estimates a negative relationship between takers and sat and a positive relationship between rank and sat. The inverse is true for Arkansas Arkansas has a relatively low number of test takers, but a high rank in average score, so our model over predicted its performance. 
+
+
+
+### Problem 2 (b)
+
+
+```{r}
+plot(mod,1)
+```
+
+
+The residuals vs fitted plot seems to show a weak relationship between the fiutted values and residuals. It appears that our model over predicts states that have low and high predicted sat scores
+(<900 and >975), but under predicts states with sat scores towards to middle (900-975)
+
+
+```{r}
+plot(sat$takers, residuals(mod), xlab = "takers", ylab = "Residual", main = "Residual from Model vs Takers")
+
+```
+
+
+looking at the plot above, there does not appear to be any strong relationship between residuals and the takers variable. However, our residuals may follow a weak parabolic pattern indicating that our model may be over predicting states with low and high percentages of takers(<20, >50) and under predicting states that have takers values closer to the mean (20-50).
+
+
+```{r}
+plot(sat$rank, residuals(mod), ylab = "Residual", xlab = "Rank", main = "Residual from Model vs Rank")
+
+```
+
+
+Similar to the previous plot, the plot above also does not appear to show any relationship between residuals and the rank variables. 
+
+
+### Problem 2 (c)
+
+
+```{r}
+mod.log = lm(sat ~ log(takers) + rank, data=sat)
+summary(mod.log)
+
+```
+
+
+looking at the residual plots above, it may be appropriate to transform the takers variable with the log function. Applying this transformation improves our R^2 to .8149 from .7814
+
+
+```{r}
+#sat[order(residuals(mod), decreasing = T),1:2]
+#sat[order(residuals(mod.log), decreasing = T),1:2]
+
+#rank(residuals(mod.log))-1:50
+#sat[48,]
+```
+
+
+Applying this transformation does change the ranks of states a little. New Hampshire and Connecticut switched places. Massachusetts is now ranked 11th and is no longer the stater with the largest increase in position. The bottom of the rankings remain similar.
+
+
+### Problem 2 (d)
+
+
+```{r}
+plot(sat$year, residuals(mod.log), xlab = "Years", ylab = "Residual", main = "Residual from Model vs Years in Science and Humanities")
+lm(residuals(mod.log) ~ sat$years) %>% abline(col = "red")
+```
+
+
+The plot above shows a positive approximately linear relationship between years and the residual from our transformed model. Also, the slope coefficient is statistically significant as shown in the model summary below (p value = 0.00291).
+
+
+```{r}
+summary(lm(residuals(mod.log) ~ sat$years))
+
+```
+
+
+### Problem 2 (e)
+
+
+```{r}
+m.1 = lm(years ~ sqrt(takers) + rank, data=sat)
+m.2 = lm(sat ~ sqrt(takers) + rank, data=sat)
+df.res = data.frame(m1.res = residuals(m.1), m2.res = residuals(m.2))
+m.3 = lm(m2.res ~ m1.res, data=df.res)
+m.4 = lm(sat ~ sqrt(takers) + rank + years, data=sat)
+summary(m.3)
+summary(m.4)
+
+```
+
+
+The coefficient for m1.res is the same as years. 
+
+
+
+
+## Problem 3
+
+
+### Problem 3 (a)
+
+
+
+
+```{r}
+mobility = read.csv("/Users/morganhawkins/Downloads/mobility.csv")
+mobility = na.omit(mobility)
+```
+
+
+I will omit rows from the data set that have missing values for my entire analyses. The upside to doing this is that I am using the same data for all my analysis. This means I am using a more clearly defined dataset. The downside is that I am unnecessarily omitting data point for some questions. Some columns have no missing values so if we were to analyze just those two columns in a question, we could have used the whole dataset for that question. Another potential downside is that missing values may not be randomly present creating a bias in our data set. For example, maybe cities with a population that is too small don't have a school so they would have a missing value for school_spending. This would cause our estimated mean population in communities to be artificially large since we are omitting communities below a certain population from our dataset.
+
+
+### Problem 3 (b)
+
+
+
+
+```{r,fig.width = 23, fig.height = 7}
+state_mobilities = c()
+for(s in unique(mobility$State)){
+  temp.mobility = subset(mobility, State == s)
+  total.pop = sum(temp.mobility$Population)
+  state_mobilities[s] = sum(temp.mobility$Mobility*temp.mobility$Population/total.pop)
+  
+}
+barplot(state_mobilities, main = "Mobility by State")
+
+```
+
+
+Looking at the bar plot above, I notice that ND has exceptionally high mobility along with Wyoming while states like Illinois, Missouri, South Carolina, Tennessee, North Carolina, Mississippi, Georgia, and Florida have exceptionally low mobility. It appears that economic mobility does vary by state. 
+
+
+### Problem 3 (c)
+
+
+
+
+```{r}
+#logging before normalization values to be between 0 and 1 to make distribution of normalized values more normal for clearer map
+#hist(log(mobility$Mobility))
+mobility.range = max(log(mobility$Mobility)) - min(log(mobility$Mobility))
+mobility.min = min(log(mobility$Mobility))
+
+mobility$Mobility.Scaled = (log(mobility$Mobility) - mobility.min)/mobility.range
+
+
+plot( mobility$Longitude, mobility$Latitude, cex = 1.2, pch = 16, 
+      col = rgb(1-mobility$Mobility.Scaled, 
+                1-mobility$Mobility.Scaled, 
+                1-mobility$Mobility.Scaled),
+      xlab = "Longitude",
+      ylab = "Latitude",
+      main = "Social Mobility by Location (darker = higher mobility)"
+      )
+
+
+
+```
+
+
+It appears that communities near the east and west coasts have lower social mobility than states closer to the middle of the country. The southeastern United States seems to have the lowest mobility while the great plains seem to have the highest. 
+
+
+### Problem 3 (d)
+
+
+We would be interested in residual test score after regressing our household income because this shows us how the community performs on standardized testing when we remove the effect that household income has on standardized test scores. 
+
+
+### Problem 3 (e)
+
+
+
+```{r }
+colnames(mobility)
+```
+
+```{r}
+#i)
+racial.mod = lm(Mobility ~ Seg_racial, data = mobility)
+plot(mobility$Seg_racial,mobility$Mobility, xlab = "Racial Segregation", ylab = "Mobility", main = "Mobility vs Racial Segregation")
+abline(racial.mod, col = "red")
+
+```
+
+
+The plot above looks approximately linear and racial segregation appears to be predictive of mobility. 
+
+
+```{r}
+summary(racial.mod)
+```
+
+
+After fitting a model, we see in the output summary above that racial segregation is able to explain 12.83% of the variance in mobility between communities. As shown in the model summary above, there is a significant relationship between Mobility and racial segregation with p value < 10e-16.
+
+
+```{r, fig.width = 13, fig.height = 4.5}
+#ii)
+par(mfrow = c(1,2))
+income.mod = lm(Mobility ~ Income, data = mobility)
+plot(mobility$Income,mobility$Mobility, xlab = "Income", ylab = "Mobility", main = "Mobility vs Income")
+abline(income.mod, col = "red")
+
+gini.mod = lm(Mobility ~ Gini, data = mobility)
+plot(mobility$Gini,mobility$Mobility, xlab = "Gini Coefficient", ylab = "Mobility", main = "Mobility vs Gini Coefficient")
+abline(gini.mod, col = "red")
+
+```
+
+
+Both plots above look approximately linear. Gini goes seem to be predictive of mobility, but it is unclear whether income is
+
+
+```{r}
+summary(income.mod)
+```
+
+
+After fitting a model, we see in the output summary above that income does not have a significant relationship with with mobility (p value = .157).
+
+
+```{r}
+summary(gini.mod)
+```
+
+
+Fitting a linear model with mobility as the response and gini as the predictor, we see that gini has a strong relationship with income (p values < 2e-16). It is able to explain 27.47$ of the variance in mobility.
+
+
+```{r}
+#iii)
+school.mod = lm(Mobility ~ School_spending, data = mobility)
+plot(mobility$School_spending,mobility$Mobility, xlab = "School Spending", ylab = "Mobility", main = "Mobility vs School Spending")
+abline(school.mod, col = "red")
+
+```
+
+The relationship between school_spending and Mobility looks approximately linear and positive.
+
+
+```{r}
+summary(school.mod)
+```
+
+
+After fitting a model, we see in the output summary above that school is able to explain 5.393% of the variance in mobility. As shown in the model summary above, there is a significant relationship between school spending and mobility (p values = 3.19e-09).
+
+
+```{r}
+#iv)
+social.mod = lm(Mobility ~ Social_capital, data = mobility)
+plot(mobility$Social_capital,mobility$Mobility, xlab = "Social Capital", ylab = "Mobility", main = "Mobility vs Social Capital")
+abline(social.mod, col = "red")
+
+```
+
+The relationship between social capital and mobility looks approximately linear and positive.
+
+
+```{r}
+summary(social.mod)
+```
+
+
+After fitting a model, we see that social capital is able to explain 26.12% of the variance in mobility. As shown in the model summary above, the relationship between social capital and mobility is significant with p value < 2e-16
+
+
+
+```{r}
+#v)
+single.mod = lm(Mobility ~ Single_mothers, data = mobility)
+plot(mobility$Single_mothers,mobility$Mobility, xlab = "Single Motherhood", ylab = "Mobility", main = "Mobility vs Single Motherhood")
+abline(single.mod, col = "red")
+
+```
+
+The relationship between single motherhood and mobility looks very strong and approximately linear
+
+
+```{r}
+summary(single.mod)
+```
+
+
+After fitting a model, we see that single motherhood is able to explain almost half the variance in mobility between communities with an adj R^2 of .4647. The relationship between single motherhood and social mobility is very strong with a p value < 2e-16
+
+
+```{r}
+full.mod <- lm(Mobility ~ Seg_racial + Gini + Income + School_spending + Social_capital + Single_mothers, data = mobility)
+summary(full.mod)
+```
+
+
+Fitting the full model together we get some changes. Gini become insignificant, income becomes significant.
+
+
+### Problem 3 (f)
+
+
+```{r,fig.width = 23, fig.height = 7}
+state_mobilities = c()
+pred_mobilities = c()
+for(s in unique(mobility$State)){
+  temp.mobility = subset(mobility, State == s)
+  total.pop = sum(temp.mobility$Population)
+  
+  temp.pred.mobil = predict(full.mod, temp.mobility)
+  temp.pred.mobil = sum(temp.pred.mobil*temp.mobility$Population/total.pop)
+  pred_mobilities = c(pred_mobilities, temp.pred.mobil)
+  
+  state_mobilities[s] = sum(temp.mobility$Mobility*temp.mobility$Population/total.pop)
+  
+  
+}
+#pred_mobilities
+#length(seq(.75,50,(end-.75)/47))
+barplot(state_mobilities, main = "Mobility by State")
+end = 57
+points(seq(.75,end,(end-.75)/47),pred_mobilities, col = "red")
+```
+
+
+The plot is showing how well our model is capturing the differences in mobility between states without explicitly including state in our model.
+
+### Problem 3 (g)
+
+
+
+```{r,fig.width = 23, fig.height = 7}
+barplot(pred_mobilities - state_mobilities, ylim = c(-.06,.06))
+
+```
+
+
+I think location should be included in our model because most of the states seem to have small residuals from their predicted, but other states such as DC, ND, and WY have very large residuals. Much larger than any others. 
+
+
+
+
+### Problem 3 (h)
+
+
+```{r}
+full.mod.loc <- lm(Mobility ~ Seg_racial + Gini + Income + School_spending + Social_capital + Single_mothers + Longitude + Latitude, data = mobility)
+summary(full.mod.loc)
+#summary(full.mod)
+```
+
+
+Some estimates did change. Seg_racial increased by just under a standard error and school spending decreased by a little over one standard error. Latitude does no appear to be significant predictor of mobility. However, Longitude has a significant relationship with mobility (p value 1.05e-13).
+
+
+```{r}
+#logging before normalization values to be between 0 and 1 to make distribution of normalized values more normal for clearer map
+#hist(log(mobility$Mobility))
+
+mob = predict(full.mod.loc, mobility) - mobility$Mobility 
+mob = mob + min(mob) + 1
+mobility.range = max((mob)) - min((mob))
+mobility.min = min((mob))
+
+mobility$Mobility.Scaled = ((mob) - mobility.min)/mobility.range
+
+
+plot( mobility$Longitude, mobility$Latitude, cex = 1.2, pch = 16, 
+      col = rgb(1-mobility$Mobility.Scaled^2, 
+                1-mobility$Mobility.Scaled^2, 
+                1-mobility$Mobility.Scaled^2),
+      xlab = "Longitude",
+      ylab = "Latitude",
+      main = "Model Residual by Location (darker = higher residual)"
+      )
+
+
+
+```
+
+
+There appears to be a little bit of information still left in location. The East and west seem to be slightly over predicted by our model. Additionally, states in the great plains seem to be under predicted, especially states in the northern great plains. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,158 @@
+---
+title: "36-402 Homework 1"
+author: "James \"Morgan\" Hawkins"
+date: "Friday January 27, 2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+## Problem 1
+
+### Problem 1 (a)
+
+
+```{r}
+load("/Users/morganhawkins/Documents/CMU/36-402/cars.Rdata")
+
+```
+
+```{r}
+plot(cars.xtrain,cars.ytrain, ylab = "Price", xlab = "Miles", main = "Used Car Price vs. Miles")
+
+
+```
+The trend does not appear to be linear. 
+
+
+### Problem 1 (b)
+
+
+```{r}
+#install.packages("np")
+library("np")
+```
+
+```{r}
+new.df = data.frame(x = cars.xtrain[,1], y = cars.ytrain[,1])
+nk_small <- npreg(y ~ x, data=new.df, bws=2.5)
+nk_med <- npreg(y ~ x, data=new.df, bws=15)
+nk_lrg <- npreg(y ~ x, data=new.df, bws=50)
+
+```
+
+```{r}
+plot(new.df$x,new.df$y, ylab = "Price", xlab = "Miles", main = "Price vs. Miles")
+lines(x0, predict(nk_small, newdata = data.frame(x = x0)), col = "red")
+lines(x0, predict(nk_med, newdata = data.frame(x = x0)), col = "green")
+lines(x0, predict(nk_lrg, newdata = data.frame(x = x0)), col = "blue")
+legend("topright", legend = c("bw = 2.5","bw = 15","bw = 50"), 
+       col = c("red", "green", "blue"), lw = 1)
+
+
+
+```
+
+### Problem 1 (c) 
+
+
+As we increase the bandwidth parameter our smoothed curve approaches a horizontal line whose height is the mean of our training set. This is underfitting our data. As we decrease our bandwidth parameter, our smoothed curve begins to capture the general trends in our data. As our bandwidth parameter decreases further, our smoothed curve begins to pick up a lot of the noise in out data set. Picking up the noise in our dataset is a sign that we are overfitting our curve to the training data. Adjusting the bandwidth parameter is similar to adjusting the number of neighboring points in the KNN procedure. 
+
+### Problem 1 (d)
+
+
+```{r}
+test.errors = c()
+
+for(bw in seq(2.5,50,2.5)){
+  temp.nk = npreg(y ~ x, data = new.df, bws = bw)
+  temp.predicted.values =  predict(temp.nk, newdata = data.frame(x = cars.xtest[,1]))
+  tst.err = sum((cars.ytest[,1] - temp.predicted.values)^2)/dim(new.df)[1]
+  test.errors = append(test.errors, tst.err)
+}
+#test.errors
+```
+
+```{r}
+plot(seq(2.5,50,2.5), test.errors, xlab = "Bandwidth", ylab = "Test Error", 
+     main = "Test Error vs. Bandwidth", cex = .5)
+lines(seq(2.5,50,2.5), test.errors, xlab = "Bandwidth", ylab = "Test Error")
+
+```
+
+### Problem 1 (e)
+
+According to this plot, the optimal bandwidth value is 22.5. This gives us an average squared error of 14,319,220.
+
+```{r}
+nk.optimal = npreg(y ~ x, data=new.df, bws=22.5)
+
+plot(new.df$x,new.df$y, ylab = "Price", xlab = "Miles", main = "Price vs. Miles")
+lines(x0, predict(nk.optimal, newdata = data.frame(x = x0)), col = "red")
+
+```
+Looking at this plot, this appears to be a somewhat reasonable bandwidth value. The curve captures the general negative relationship between car mileage and price. However, it does not appear to properly capture the non linear aspect of the relationship. Judging by the the graph of the curve and the graph of the full dataset, I believe this curve will consistently underestimate the price of cars with mileages close to 0.
+
+### Problem 1 (f)
+```{r}
+bandwidth.df = data.frame(bw = seq(2.5,50,2.5))
+
+for(set in 1:40){
+  test.errors = c()
+  new.df = data.frame(x = cars.xtrain[,set], y = cars.ytrain[,set])
+  
+  for(bw in seq(2.5,50,2.5)){
+    temp.nk = npreg(y ~ x, data = new.df, bws = bw)
+    temp.predicted.values =  predict(temp.nk, newdata = data.frame(x = cars.xtest[,set]))
+    tst.err = sum((cars.ytest[,set] - temp.predicted.values)^2)/dim(new.df)[1]
+    test.errors = append(test.errors, tst.err)
+  }
+  bandwidth.df[,paste("set.",set,sep = "")] = test.errors
+}
+
+average.test.errors = colMeans(t(bandwidth.df))
+plot(seq(2.5,50,2.5), average.test.errors, cex = .5, xlab = "Bandwidth",
+     ylab = "Test Error", main = "Test Error vs. Bandwidth")
+lines(seq(2.5,50,2.5), average.test.errors)
+
+colMeans(t(bandwidth.df[6,]))
+```
+The optimal bandwidth value has changed from 22.5 to 15. The associated test error has increased from from 14,319,220 to 33,305,401.
+
+
+
+## Problem 2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

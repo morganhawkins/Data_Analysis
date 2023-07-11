@@ -1,0 +1,152 @@
+---
+title: "36-402 Homework 3"
+author: "James \"Morgan\" Hawkins"
+date: "Friday Feb 10, 2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+
+## Problem 1
+
+
+### Problem 1 (c)
+
+```{r}
+rx <- function(b){
+  if(b == 0){
+    return(runif(1,0,4))
+  }else{
+    return(rnorm(1,-2,2))
+  }
+  
+}
+
+set.seed(99)
+sample.z <- rbinom(10000,1,.5)
+sample.x <-sapply(sample.z,rx)
+
+mean(sample.x)
+sd(sample.x)^2
+```
+
+
+We expect our sample to have a mean of 0 and a variance of 6.666. After drawing 10,000 smaples from the distribution of x we get a sample mean of .0100 and a sample variance of 6.6742. This reinfoces our answers for part a and b.
+
+
+## Problem 4
+
+
+### Problem 4 (a)
+
+
+```{r}
+1198/(1493+1198)
+
+557/(557+1278)
+
+```
+
+
+44.52% of male applicants were accepted to Berkeley while only 30.35% of female applicants were accepted. 
+
+
+### Problem 4 (b)
+
+
+```{r}
+ucb = data.frame(UCBAdmissions)
+ucb
+```
+
+
+```{r}
+calc_acceptance_rates <- function(df, department){
+  df = df[df$Dept == department,]
+  df = df[order(df$Admit),]
+  df = df[order(df$Gender),]
+  return(c(
+    "Male" = df[1,4]/(df[1,4] + df[2,4]),
+    "Female" = df[3,4]/(df[3,4] + df[4,4])
+            ))
+}
+
+for(d in unique(ucb$Dept)){
+  temp.admiss = (calc_acceptance_rates(ucb,d))
+  
+  #print(temp.admiss)
+  print(d)
+  if(temp.admiss[[1]]>temp.admiss[[2]]){
+    print("male higher")
+  }else{
+    print("female higher")
+  }
+  
+}
+
+```
+
+
+The female acceptance rate is higher in 4 departments (A, B, D, F) and male acceptance rate is higher in 2 departments (C, E)
+
+
+This can be considered a near example of simpson's paradox because our conclusion changes based on how we look at our data. In part A we looked at overall acceptance, but in part b we looked at the proportion of departments that accept male applicants at a higher rate. 
+
+
+### Problem 4 (c)
+
+
+Y -- accepted? bool
+
+X -- m/f [1 = female]
+
+Z -- department -- categorical
+
+
+```{r}
+
+calc_acceptance_rates <- function(df, department){
+  df = df[df$Dept == department,]
+  df = df[order(df$Admit),]
+  df = df[order(df$Gender),]
+  return(c(
+    
+    df[1,4]/(df[1,4] + df[2,4]),
+    df[3,4]/(df[3,4] + df[4,4])
+    
+    ))
+}
+  
+department.acceptances = data.frame("Gender" = c("Male","Female"))
+for(d in unique(ucb$Dept)){
+  
+  #append(department.acceptances, c(calc_acceptance_rates(ucb,d)) )
+  department.acceptances[,paste("Z",d,sep = "=")] = calc_acceptance_rates(ucb,d)
+}
+
+department.acceptances
+
+
+```
+
+
+
+
+
+
+covariate - country of origin
+
+treatment - drinks tea
+
+outcome - if you live past 40
+
+
+
+
+
+
+
